@@ -11,29 +11,58 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const [error, setError] = useState<string>('');
 
+  // Use ref to keep track of the callback to avoid re-initializing scanner when callback changes
+  const onScanSuccessRef = useRef(onScanSuccess);
   useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+  }, [onScanSuccess]);
+
+  useEffect(() => {
+    // Check for secure context
+    if (window.location.protocol !== 'https:' && 
+        window.location.hostname !== 'localhost' && 
+        window.location.hostname !== '127.0.0.1') {
+      setError("摄像头访问需要 HTTPS 环境。请确保通过 HTTPS 或 localhost 访问。");
+      return;
+    }
+
+    let isMounted = true;
+    
     // Initialize scanner
     // Use a small timeout to ensure the DOM element is ready
     const timer = setTimeout(() => {
+      if (!isMounted) return;
+
       try {
-        scannerRef.current = new Html5QrcodeScanner(
+        // Prevent duplicate initialization
+        if (scannerRef.current) {
+          return;
+        }
+
+        const scanner = new Html5QrcodeScanner(
           "reader",
           { 
             fps: 10, 
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
-            showTorchButtonIfSupported: true
+            showTorchButtonIfSupported: true,
+            rememberLastUsedCamera: true
           },
           /* verbose= */ false
         );
 
-        scannerRef.current.render(
+        scannerRef.current = scanner;
+
+        scanner.render(
           (decodedText) => {
-             // Success callback
-             onScanSuccess(decodedText);
-             // Stop scanning after success
-             if (scannerRef.current) {
-               scannerRef.current.clear().catch(console.error);
+             if (isMounted) {
+               // Success callback
+               onScanSuccessRef.current(decodedText);
+               // Stop scanning after success
+               if (scannerRef.current) {
+                 scannerRef.current.clear().catch(console.error);
+                 scannerRef.current = null;
+               }
              }
           },
           (_) => {
@@ -42,17 +71,21 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         );
       } catch (err) {
         console.error("Failed to initialize scanner", err);
-        setError("无法启动摄像头，请确保已授予权限。");
+        if (isMounted) {
+          setError("无法启动摄像头，请确保已授予权限。");
+        }
       }
     }, 100);
 
     return () => {
+      isMounted = false;
       clearTimeout(timer);
       if (scannerRef.current) {
         scannerRef.current.clear().catch(console.error);
+        scannerRef.current = null;
       }
     };
-  }, [onScanSuccess]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-80 p-4">
