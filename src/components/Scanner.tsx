@@ -36,9 +36,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
                scannerRef.current.clear().catch(console.error);
              }
           },
-          (errorMessage) => {
+          (_) => {
             // Error callback (scanning in progress, no code found yet)
-            // console.log(errorMessage); 
           }
         );
       } catch (err) {
