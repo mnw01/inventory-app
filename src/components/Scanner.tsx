@@ -36,24 +36,19 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         const html5QrCode = new Html5Qrcode("reader");
         scannerRef.current = html5QrCode;
 
-        // Check permissions and get cameras
-        // Note: This explicitly asks for permission if not granted
-        const devices = await Html5Qrcode.getCameras();
+        // Use constraints directly instead of getting cameras first
+        // This is more reliable on some mobile devices
+        const config = { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0 
+        };
         
-        if (!mountedRef.current) return;
-
-        if (devices && devices.length) {
-          // Try to find back camera
-          const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
-          const cameraId = backCamera ? backCamera.id : devices[0].id;
-          
+        try {
+          // Try environment facing camera first
           await html5QrCode.start(
-            cameraId, 
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 },
-              aspectRatio: 1.0
-            },
+            { facingMode: "environment" }, 
+            config,
             (decodedText) => {
               if (mountedRef.current) {
                 onScanSuccessRef.current(decodedText);
@@ -65,17 +60,32 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
                 }
               }
             },
-            () => {
-              // Ignore scan failures (scanning in progress)
-            }
+            () => {}
           );
-          
-          if (mountedRef.current) {
-            setIsLoading(false);
-          }
-        } else {
-          throw new Error("未检测到摄像头设备");
+        } catch (e) {
+          console.warn("Failed to start environment camera, trying user camera or default", e);
+          // Fallback to user facing or default
+          await html5QrCode.start(
+             { facingMode: "user" }, 
+             config,
+             (decodedText) => {
+               if (mountedRef.current) {
+                 onScanSuccessRef.current(decodedText);
+                 if (scannerRef.current && scannerRef.current.isScanning) {
+                    scannerRef.current.stop().then(() => {
+                       scannerRef.current?.clear();
+                    }).catch(console.error);
+                 }
+               }
+             },
+             () => {}
+          );
         }
+          
+        if (mountedRef.current) {
+          setIsLoading(false);
+        }
+
       } catch (err: any) {
         console.error("Scanner initialization failed", err);
         if (mountedRef.current) {
