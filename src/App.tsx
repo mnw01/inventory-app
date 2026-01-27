@@ -49,6 +49,7 @@ function App() {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Persistence
@@ -65,6 +66,11 @@ function App() {
   const handleStockAction = (product: Product) => {
     setSelectedProduct(product);
     setIsStockModalOpen(true);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setIsAddModalOpen(true);
   };
 
   const handleStockConfirm = (type: TransactionType, quantity: number) => {
@@ -85,6 +91,12 @@ function App() {
       id: Date.now().toString(),
     };
     setProducts(prev => [newProduct, ...prev]);
+  };
+
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    setProducts(prev =>
+      prev.map(p => (p.id === updatedProduct.id ? updatedProduct : p)),
+    );
   };
 
   const handleScanSuccess = (decodedText: string) => {
@@ -153,7 +165,10 @@ function App() {
               </div>
 
               <button 
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsAddModalOpen(true);
+                }}
                 className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                 <Plus size={20} />
@@ -175,6 +190,7 @@ function App() {
           products={filteredProducts} 
           exchangeRate={exchangeRate}
           onStockAction={handleStockAction}
+          onEdit={handleEditProduct}
         />
       </main>
 
@@ -195,8 +211,13 @@ function App() {
 
       <AddProductModal 
         isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingProduct(null);
+        }}
         onAdd={handleAddProduct}
+        onUpdate={handleUpdateProduct}
+        editingProduct={editingProduct}
       />
 
       {isScannerOpen && (
