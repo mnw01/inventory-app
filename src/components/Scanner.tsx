@@ -36,12 +36,11 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         const html5QrCode = new Html5Qrcode("reader");
         scannerRef.current = html5QrCode;
 
-        // Use constraints directly instead of getting cameras first
-        // This is more reliable on some mobile devices
         const config = { 
-          fps: 10, 
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0 
+        fps: 10, 
+        // 放大扫码区域，提升在手机上的可视面积
+        qrbox: { width: 320, height: 320 },
+        aspectRatio: 1.0, 
         };
         
         try {
@@ -130,8 +129,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-90 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-90 p-2 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-w-lg md:max-w-2xl overflow-hidden relative flex flex-col max-h-[94vh]">
         <div className="flex justify-between items-center p-4 border-b bg-gray-50">
           <h2 className="text-lg font-bold text-gray-800">扫码识别</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-200 rounded-full transition-colors">
@@ -139,7 +138,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
           </button>
         </div>
         
-        <div className="flex-1 bg-black relative min-h-[300px] flex items-center justify-center">
+        <div className="flex-1 bg-black relative min-h-[360px] sm:min-h-[420px] flex items-center justify-center">
            {isLoading && !error && (
              <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 bg-black bg-opacity-50">
                <RefreshCw className="animate-spin mb-2" size={32} />
@@ -148,7 +147,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
            )}
            
            {error ? (
-             <div className="text-white text-center p-8 flex flex-col items-center">
+             <div className="text-white text-center p-6 sm:p-8 flex flex-col items-center">
                <AlertCircle size={48} className="text-red-500 mb-4" />
                <p className="mb-4 text-lg">{error}</p>
                <button 
