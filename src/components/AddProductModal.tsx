@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product, CustomsStatus } from '../types';
 import { X, Upload } from 'lucide-react';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (product: Omit<Product, 'id'>) => void;
+  onSubmit: (product: Omit<Product, 'id'>) => void;
+  initialData?: Product | null;
 }
 
-export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onAdd }) => {
+export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -18,20 +19,36 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     customsStatus: 'arrived' as CustomsStatus,
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name,
+          sku: initialData.sku,
+          imageUrl: initialData.imageUrl,
+          stock: initialData.stock,
+          costPrice: initialData.costPrice,
+          customsStatus: initialData.customsStatus,
+        });
+      } else {
+        setFormData({
+          name: '',
+          sku: '',
+          imageUrl: '',
+          stock: 0,
+          costPrice: 0,
+          customsStatus: 'arrived',
+        });
+      }
+    }
+  }, [isOpen, initialData]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    onSubmit(formData);
     onClose();
-    setFormData({
-      name: '',
-      sku: '',
-      imageUrl: '',
-      stock: 0,
-      costPrice: 0,
-      customsStatus: 'arrived',
-    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

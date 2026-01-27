@@ -49,6 +49,7 @@ function App() {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Persistence
@@ -79,12 +80,26 @@ function App() {
     }));
   };
 
-  const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
-    const newProduct: Product = {
-      ...newProductData,
-      id: Date.now().toString(),
-    };
-    setProducts(prev => [newProduct, ...prev]);
+  const handleSaveProduct = (productData: Omit<Product, 'id'>) => {
+    if (editingProduct) {
+      setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...productData, id: p.id } : p));
+    } else {
+      const newProduct: Product = {
+        ...productData,
+        id: Date.now().toString(),
+      };
+      setProducts(prev => [newProduct, ...prev]);
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setIsAddModalOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setEditingProduct(null);
+    setIsAddModalOpen(true);
   };
 
   const handleScanSuccess = (decodedText: string) => {
@@ -143,17 +158,24 @@ function App() {
               
               <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-full sm:w-auto">
                 <DollarSign size={18} className="text-blue-600" />
-                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">汇率 (CNY:IDR)</span>
-                <input 
-                  type="number" 
-                  value={exchangeRate}
-                  onChange={(e) => setExchangeRate(Number(e.target.value))}
-                  className="w-20 bg-transparent border-b border-blue-300 focus:outline-none text-blue-700 font-bold text-right"
-                />
+                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">
+                  {isRateLoading ? '更新汇率...' : '实时汇率 (CNY:IDR)'}
+                </span>
+                <div className="flex items-center gap-1">
+                  <input 
+                    type="number" 
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(Number(e.target.value))}
+                    className="w-20 bg-transparent border-b border-blue-300 focus:outline-none text-blue-700 font-bold text-right"
+                  />
+                  {rateError && (
+                    <span className="text-xs text-red-500" title={rateError}>!</span>
+                  )}
+                </div>
               </div>
 
               <button 
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={handleAddClick}
                 className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                 <Plus size={20} />
@@ -175,6 +197,7 @@ function App() {
           products={filteredProducts} 
           exchangeRate={exchangeRate}
           onStockAction={handleStockAction}
+          onEdit={handleEditProduct}
         />
       </main>
 
@@ -196,7 +219,8 @@ function App() {
       <AddProductModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddProduct}
+        onSubmit={handleSaveProduct}
+        initialData={editingProduct}
       />
 
       {isScannerOpen && (

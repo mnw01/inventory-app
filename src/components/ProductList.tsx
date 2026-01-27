@@ -1,11 +1,12 @@
 import React from 'react';
 import { Product } from '../types';
-import { Package, Truck } from 'lucide-react';
+import { Package, Truck, Edit } from 'lucide-react';
 
 interface ProductListProps {
   products: Product[];
   exchangeRate: number;
   onStockAction: (product: Product) => void;
+  onEdit: (product: Product) => void;
 }
 
 const getCustomsStatusLabel = (status: Product['customsStatus']) => {
@@ -17,7 +18,7 @@ const getCustomsStatusLabel = (status: Product['customsStatus']) => {
   }
 };
 
-export const ProductList: React.FC<ProductListProps> = ({ products, exchangeRate, onStockAction }) => {
+export const ProductList: React.FC<ProductListProps> = ({ products, exchangeRate, onStockAction, onEdit }) => {
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-gray-500">
@@ -50,7 +51,16 @@ export const ProductList: React.FC<ProductListProps> = ({ products, exchangeRate
                </div>
             </div>
             <div className="p-4 flex-1 flex flex-col">
-              <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2" title={product.name}>{product.name}</h3>
+              <div className="flex justify-between items-start mb-2 gap-2">
+                <h3 className="text-lg font-bold text-gray-800 line-clamp-2 flex-1" title={product.name}>{product.name}</h3>
+                <button 
+                  onClick={() => onEdit(product)}
+                  className="text-gray-400 hover:text-indigo-600 p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                  title="编辑商品"
+                >
+                  <Edit size={18} />
+                </button>
+              </div>
               
               <div className="mt-auto space-y-3">
                 <div className="flex justify-between items-center text-sm border-b pb-2">
