@@ -4,7 +4,7 @@ import { StockModal } from './components/StockModal';
 import { AddProductModal } from './components/AddProductModal';
 import { Scanner } from './components/Scanner';
 import { Product, TransactionType } from './types';
-import { Search, Plus, DollarSign, Warehouse, ScanBarcode } from 'lucide-react';
+import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw } from 'lucide-react';
 
 // Mock initial data
 const initialProducts: Product[] = [
@@ -44,13 +44,88 @@ function App() {
   });
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [exchangeRate, setExchangeRate] = useState<number>(2200); // 1 CNY = 2200 IDR (Approx)
+  const [exchangeRate, setExchangeRate] = useState<number>(() => {
+    // 从localStorage读取保存的汇率，如果没有则使用默认值
+    const saved = localStorage.getItem('wms_exchange_rate');
+    return saved ? parseFloat(saved) : 2200;
+  });
+  const [isLoadingRate, setIsLoadingRate] = useState<boolean>(false);
+  const [rateError, setRateError] = useState<string>('');
+  const [lastRateUpdate, setLastRateUpdate] = useState<Date | null>(() => {
+    const saved = localStorage.getItem('wms_rate_update_time');
+    return saved ? new Date(saved) : null;
+  });
   
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  // 获取实时汇率
+  const fetchExchangeRate = async () => {
+    setIsLoadingRate(true);
+    setRateError('');
+    
+    try {
+      // 优先使用 exchangerate-api.com 免费端点（无需API key）
+      let response = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
+      let data;
+      
+      if (!response.ok) {
+        // 备用方案：使用 exchangerate.host
+        response = await fetch('https://api.exchangerate.host/latest?base=CNY&symbols=IDR');
+        if (!response.ok) {
+          throw new Error('获取汇率失败');
+        }
+        data = await response.json();
+        
+        if (data.success && data.rates && data.rates.IDR) {
+          const rate = Math.round(data.rates.IDR);
+          setExchangeRate(rate);
+          setLastRateUpdate(new Date());
+          localStorage.setItem('wms_exchange_rate', rate.toString());
+          localStorage.setItem('wms_rate_update_time', new Date().toISOString());
+          return;
+        } else {
+          throw new Error('汇率数据格式错误');
+        }
+      }
+      
+      data = await response.json();
+      
+      // exchangerate-api.com 返回格式: { rates: { IDR: 2308.63 } }
+      if (data.rates && data.rates.IDR) {
+        const rate = Math.round(data.rates.IDR);
+        setExchangeRate(rate);
+        setLastRateUpdate(new Date());
+        // 保存到localStorage
+        localStorage.setItem('wms_exchange_rate', rate.toString());
+        localStorage.setItem('wms_rate_update_time', new Date().toISOString());
+      } else {
+        throw new Error('汇率数据格式错误');
+      }
+    } catch (err: any) {
+      console.error('获取汇率失败:', err);
+      setRateError('获取实时汇率失败，使用本地保存的汇率');
+      // 如果失败，保留当前汇率值
+    } finally {
+      setIsLoadingRate(false);
+    }
+  };
+
+  // 组件加载时获取汇率，之后每30分钟更新一次
+  useEffect(() => {
+    // 立即获取一次
+    fetchExchangeRate();
+    
+    // 每30分钟更新一次
+    const interval = setInterval(() => {
+      fetchExchangeRate();
+    }, 30 * 60 * 1000); // 30分钟
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Persistence
   useEffect(() => {
@@ -155,13 +230,33 @@ function App() {
               
               <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-full sm:w-auto">
                 <DollarSign size={18} className="text-blue-600" />
-                <span className="text-sm font-medium text-gray-600 whitespace-nowrap">汇率 (CNY:IDR)</span>
-                <input 
-                  type="number" 
-                  value={exchangeRate}
-                  onChange={(e) => setExchangeRate(Number(e.target.value))}
-                  className="w-20 bg-transparent border-b border-blue-300 focus:outline-none text-blue-700 font-bold text-right"
-                />
+                <span className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">汇率 (CNY:IDR)</span>
+                <div className="flex items-center gap-1">
+                  <input 
+                    type="number" 
+                    value={exchangeRate}
+                    onChange={(e) => {
+                      const newRate = Number(e.target.value);
+                      setExchangeRate(newRate);
+                      localStorage.setItem('wms_exchange_rate', newRate.toString());
+                    }}
+                    className="w-16 sm:w-20 bg-transparent border-b border-blue-300 focus:outline-none text-blue-700 font-bold text-right text-xs sm:text-sm"
+                    title="可手动修改汇率"
+                  />
+                  <button
+                    onClick={fetchExchangeRate}
+                    disabled={isLoadingRate}
+                    className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors disabled:opacity-50"
+                    title="刷新实时汇率"
+                  >
+                    <RefreshCw size={14} className={isLoadingRate ? 'animate-spin' : ''} />
+                  </button>
+                </div>
+                {lastRateUpdate && (
+                  <span className="text-xs text-gray-400 hidden sm:inline">
+                    {new Date(lastRateUpdate).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
               </div>
 
               <button 
@@ -181,9 +276,26 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div className="mb-6 flex justify-between items-end">
+        <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
           <h2 className="text-lg font-semibold text-gray-700">商品列表 ({filteredProducts.length})</h2>
-          <span className="text-sm text-gray-500">当前汇率: 1 CNY = {exchangeRate} IDR</span>
+          <div className="flex flex-col sm:items-end gap-1">
+            <span className="text-sm text-gray-500">
+              当前汇率: 1 CNY = <span className="font-semibold text-blue-600">{exchangeRate.toLocaleString('id-ID')}</span> IDR
+            </span>
+            {lastRateUpdate && (
+              <span className="text-xs text-gray-400">
+                更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', { 
+                  month: 'short', 
+                  day: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+            )}
+            {rateError && (
+              <span className="text-xs text-amber-600">{rateError}</span>
+            )}
+          </div>
         </div>
 
         <ProductList 
