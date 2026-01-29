@@ -233,16 +233,12 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             <>
               <div id="reader" className="w-full h-full"></div>
 
-              {/* 大厂风格扫描框覆盖层 */}
+              {/* 大厂风格扫描框覆盖层 - 纯净高亮版 */}
               {!isLoading && !showSettings && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  {/* 半透明黑色遮罩 */}
-                  <div className="absolute inset-0 bg-black/60"></div>
 
-                  {/* 扫描框透明区域 */}
+                  {/* 扫描框区域 */}
                   <div className="relative w-72 h-72 sm:w-80 sm:h-80">
-                    {/* 透明内框 */}
-                    <div className="absolute inset-0 bg-transparent border-[3000px] border-black/60 box-content -m-[3000px]"></div>
 
                     {/* 角标 - iOS/支付宝风格 */}
                     <div className="absolute -top-1 -left-1 w-8 h-8 border-t-[3px] border-l-[3px] border-[#00D4AA]"></div>
@@ -256,7 +252,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
 
                   {/* 提示文字 */}
                   <div className="absolute bottom-24 left-0 right-0 text-center">
-                    <p className="text-white/90 text-sm font-medium">将条码放入框内，即可自动扫描</p>
+                    <p className="text-white/90 text-sm font-medium drop-shadow-md">将条码放入框内，即可自动扫描</p>
                   </div>
                 </div>
               )}
