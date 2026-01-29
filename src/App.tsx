@@ -6,7 +6,7 @@ import { Scanner } from './components/Scanner';
 import { Sidebar } from './components/Sidebar';
 import { TransactionRecords } from './components/TransactionRecords';
 import { Product, TransactionType, TransactionRecord } from './types';
-import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check } from 'lucide-react';
+import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check, X } from 'lucide-react';
 
 // Mock initial data
 const initialProducts: Product[] = [
@@ -250,17 +250,28 @@ function App() {
                   <input
                     type="text"
                     placeholder="搜索 SKU 或名称..."
-                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="pl-10 pr-16 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <button
-                    onClick={() => setIsScannerOpen(true)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-indigo-600"
-                    title="扫码识别"
-                  >
-                    <ScanBarcode size={20} />
-                  </button>
+                  <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        title="清除搜索"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsScannerOpen(true)}
+                      className="p-1 text-gray-500 hover:text-indigo-600 transition-colors"
+                      title="扫码识别"
+                    >
+                      <ScanBarcode size={20} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-full sm:w-auto">
