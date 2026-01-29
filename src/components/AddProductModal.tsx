@@ -272,7 +272,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">成本价 (CNY)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">价格 (CNY)</label>
               <input
                 type="number"
                 name="costPrice"
