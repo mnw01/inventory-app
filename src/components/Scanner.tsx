@@ -232,6 +232,30 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             <>
               <div id="reader" className="w-full h-full"></div>
 
+              {/* 扫描框覆盖层 */}
+              {!isLoading && !showSettings && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="relative w-80 h-56 sm:w-[400px] sm:h-[280px]">
+                    {/* 半透明遮罩 */}
+                    <div className="absolute inset-0 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
+
+                    {/* 四角标记 */}
+                    <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-green-500 rounded-tl"></div>
+                    <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-green-500 rounded-tr"></div>
+                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-green-500 rounded-bl"></div>
+                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-green-500 rounded-br"></div>
+
+                    {/* 扫描线 */}
+                    <div className="absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-green-400 to-transparent shadow-[0_0_15px_rgba(74,222,128,0.9)] animate-scan rounded-full"></div>
+
+                    {/* 提示文字 */}
+                    <p className="absolute -bottom-10 left-0 right-0 text-center text-white text-sm font-medium drop-shadow-lg">
+                      将条码对准框内
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Controls */}
               {!isLoading && !showSettings && (
                 <div className="absolute top-4 right-4 z-10">
