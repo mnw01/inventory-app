@@ -60,8 +60,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
 
         const config = {
           fps: 30,
-          qrbox: { width: 320, height: 220 },
           aspectRatio: 1.0,
+          disableFlip: false,
           formatsToSupport: [
             0,  // QR_CODE
             5,  // CODE_128
@@ -232,26 +232,30 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             <>
               <div id="reader" className="w-full h-full"></div>
 
-              {/* 扫描框覆盖层 */}
+              {/* 大厂风格扫描框覆盖层 */}
               {!isLoading && !showSettings && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="relative w-80 h-56 sm:w-[400px] sm:h-[280px]">
-                    {/* 半透明遮罩 */}
-                    <div className="absolute inset-0 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
+                  {/* 半透明黑色遮罩 */}
+                  <div className="absolute inset-0 bg-black/60"></div>
 
-                    {/* 四角标记 */}
-                    <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-green-500 rounded-tl"></div>
-                    <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-green-500 rounded-tr"></div>
-                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-green-500 rounded-bl"></div>
-                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-green-500 rounded-br"></div>
+                  {/* 扫描框透明区域 */}
+                  <div className="relative w-72 h-72 sm:w-80 sm:h-80">
+                    {/* 透明内框 */}
+                    <div className="absolute inset-0 bg-transparent border-[3000px] border-black/60 box-content -m-[3000px]"></div>
 
-                    {/* 扫描线 */}
-                    <div className="absolute left-2 right-2 h-1 bg-gradient-to-r from-transparent via-green-400 to-transparent shadow-[0_0_15px_rgba(74,222,128,0.9)] animate-scan rounded-full"></div>
+                    {/* 角标 - iOS/支付宝风格 */}
+                    <div className="absolute -top-1 -left-1 w-8 h-8 border-t-[3px] border-l-[3px] border-[#00D4AA]"></div>
+                    <div className="absolute -top-1 -right-1 w-8 h-8 border-t-[3px] border-r-[3px] border-[#00D4AA]"></div>
+                    <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-[3px] border-l-[3px] border-[#00D4AA]"></div>
+                    <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-[3px] border-r-[3px] border-[#00D4AA]"></div>
 
-                    {/* 提示文字 */}
-                    <p className="absolute -bottom-10 left-0 right-0 text-center text-white text-sm font-medium drop-shadow-lg">
-                      将条码对准框内
-                    </p>
+                    {/* 扫描线 - 渐变效果 */}
+                    <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent shadow-[0_0_20px_4px_rgba(0,212,170,0.6)] animate-scan"></div>
+                  </div>
+
+                  {/* 提示文字 */}
+                  <div className="absolute bottom-24 left-0 right-0 text-center">
+                    <p className="text-white/90 text-sm font-medium">将条码放入框内，即可自动扫描</p>
                   </div>
                 </div>
               )}
