@@ -51,7 +51,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         if (!scannerRef.current) {
           scannerRef.current = new Html5Qrcode("reader");
         }
-        const html5QrCode = scannerRef.current;
+        const html5QrCode = scannerRef.current as Html5Qrcode;
 
         const config = {
           // 放大扫码区域
