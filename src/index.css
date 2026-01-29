@@ -54,3 +54,51 @@ body {
 .quagga-viewport>canvas.drawingBuffer {
   display: none;
 }
+
+/* Html5Qrcode Scanner Styles */
+#reader {
+  position: relative;
+}
+
+#reader video {
+  object-fit: cover !important;
+}
+
+#reader__scan_region {
+  position: relative;
+}
+
+#reader__scan_region::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+  animation: scanLine 2s linear infinite;
+  border-radius: 2px;
+}
+
+@keyframes scanLine {
+
+  0%,
+  100% {
+    top: 10%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  95%,
+  100% {
+    top: 90%;
+    opacity: 0;
+  }
+}
