@@ -4,7 +4,7 @@ import { StockModal } from './components/StockModal';
 import { AddProductModal } from './components/AddProductModal';
 import { Scanner } from './components/Scanner';
 import { Product, TransactionType } from './types';
-import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw } from 'lucide-react';
+import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check } from 'lucide-react';
 
 // Mock initial data
 const initialProducts: Product[] = [
@@ -42,7 +42,7 @@ function App() {
     const saved = localStorage.getItem('wms_products');
     return saved ? JSON.parse(saved) : initialProducts;
   });
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [exchangeRate, setExchangeRate] = useState<number>(() => {
     // 从localStorage读取保存的汇率，如果没有则使用默认值
@@ -55,23 +55,25 @@ function App() {
     const saved = localStorage.getItem('wms_rate_update_time');
     return saved ? new Date(saved) : null;
   });
-  
+
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'success'>('idle');
 
   // 获取实时汇率
   const fetchExchangeRate = async () => {
     setIsLoadingRate(true);
     setRateError('');
-    
+    let hasError = false;
+
     try {
       // 优先使用 exchangerate-api.com 免费端点（无需API key）
       let response = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
       let data;
-      
+
       if (!response.ok) {
         // 备用方案：使用 exchangerate.host
         response = await fetch('https://api.exchangerate.host/latest?base=CNY&symbols=IDR');
@@ -79,7 +81,7 @@ function App() {
           throw new Error('获取汇率失败');
         }
         data = await response.json();
-        
+
         if (data.success && data.rates && data.rates.IDR) {
           const rate = Math.round(data.rates.IDR);
           setExchangeRate(rate);
@@ -91,9 +93,9 @@ function App() {
           throw new Error('汇率数据格式错误');
         }
       }
-      
+
       data = await response.json();
-      
+
       // exchangerate-api.com 返回格式: { rates: { IDR: 2308.63 } }
       if (data.rates && data.rates.IDR) {
         const rate = Math.round(data.rates.IDR);
@@ -108,9 +110,14 @@ function App() {
     } catch (err: any) {
       console.error('获取汇率失败:', err);
       setRateError('获取实时汇率失败，使用本地保存的汇率');
+      hasError = true;
       // 如果失败，保留当前汇率值
     } finally {
       setIsLoadingRate(false);
+      if (!hasError) {
+        setUpdateStatus('success');
+        setTimeout(() => setUpdateStatus('idle'), 2000);
+      }
     }
   };
 
@@ -118,12 +125,12 @@ function App() {
   useEffect(() => {
     // 立即获取一次
     fetchExchangeRate();
-    
+
     // 每30分钟更新一次
     const interval = setInterval(() => {
       fetchExchangeRate();
     }, 30 * 60 * 1000); // 30分钟
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -133,8 +140,8 @@ function App() {
   }, [products]);
 
   // Filter products
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -177,7 +184,7 @@ function App() {
   const handleScanSuccess = (decodedText: string) => {
     setIsScannerOpen(false);
     setSearchQuery(decodedText);
-    
+
     // Attempt to find exact match
     const match = products.find(p => p.sku === decodedText);
     if (match) {
@@ -187,9 +194,9 @@ function App() {
       // For now just filtering by SKU is enough feedback.
       // Could also prompt to add:
       if (confirm(`未找到商品 SKU: ${decodedText}。是否立即添加新商品？`)) {
-         setIsAddModalOpen(true);
-         // You might want to pass the SKU to the modal, but currently modal state is local.
-         // A simple improvement would be to allow pre-filling the modal.
+        setIsAddModalOpen(true);
+        // You might want to pass the SKU to the modal, but currently modal state is local.
+        // A simple improvement would be to allow pre-filling the modal.
       }
     }
   };
@@ -206,9 +213,9 @@ function App() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900">仓库管理系统</h1>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
-               <div className="relative w-full sm:w-64">
+              <div className="relative w-full sm:w-64">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search size={18} className="text-gray-400" />
                 </div>
@@ -219,7 +226,7 @@ function App() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <button 
+                <button
                   onClick={() => setIsScannerOpen(true)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-indigo-600"
                   title="扫码识别"
@@ -227,13 +234,13 @@ function App() {
                   <ScanBarcode size={20} />
                 </button>
               </div>
-              
+
               <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-full sm:w-auto">
                 <DollarSign size={18} className="text-blue-600" />
                 <span className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">汇率 (CNY:IDR)</span>
                 <div className="flex items-center gap-1">
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={exchangeRate}
                     onChange={(e) => {
                       const newRate = Number(e.target.value);
@@ -245,21 +252,28 @@ function App() {
                   />
                   <button
                     onClick={fetchExchangeRate}
-                    disabled={isLoadingRate}
-                    className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors disabled:opacity-50"
-                    title="刷新实时汇率"
+                    disabled={isLoadingRate || updateStatus === 'success'}
+                    className={`p-1 rounded transition-colors disabled:opacity-50 ${updateStatus === 'success'
+                      ? 'text-green-600 bg-green-50'
+                      : 'text-blue-600 hover:text-blue-700 hover:bg-blue-100'
+                      }`}
+                    title={updateStatus === 'success' ? "更新成功" : "刷新实时汇率"}
                   >
-                    <RefreshCw size={14} className={isLoadingRate ? 'animate-spin' : ''} />
+                    {updateStatus === 'success' ? (
+                      <Check size={14} className="animate-in zoom-in duration-300" />
+                    ) : (
+                      <RefreshCw size={14} className={isLoadingRate ? 'animate-spin' : ''} />
+                    )}
                   </button>
                 </div>
                 {lastRateUpdate && (
                   <span className="text-xs text-gray-400 hidden sm:inline">
-                    {new Date(lastRateUpdate).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                    更新于 {new Date(lastRateUpdate).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   setEditingProduct(null);
                   setIsAddModalOpen(true);
@@ -284,11 +298,11 @@ function App() {
             </span>
             {lastRateUpdate && (
               <span className="text-xs text-gray-400">
-                更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
+                更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
                 })}
               </span>
             )}
@@ -298,8 +312,8 @@ function App() {
           </div>
         </div>
 
-        <ProductList 
-          products={filteredProducts} 
+        <ProductList
+          products={filteredProducts}
           exchangeRate={exchangeRate}
           onStockAction={handleStockAction}
           onEdit={handleEditProduct}
@@ -314,15 +328,15 @@ function App() {
       </footer>
 
       {/* Modals */}
-      <StockModal 
-        isOpen={isStockModalOpen} 
+      <StockModal
+        isOpen={isStockModalOpen}
         onClose={() => setIsStockModalOpen(false)}
         product={selectedProduct}
         onConfirm={handleStockConfirm}
       />
 
-      <AddProductModal 
-        isOpen={isAddModalOpen} 
+      <AddProductModal
+        isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false);
           setEditingProduct(null);
@@ -333,7 +347,7 @@ function App() {
       />
 
       {isScannerOpen && (
-        <Scanner 
+        <Scanner
           onScanSuccess={handleScanSuccess}
           onClose={() => setIsScannerOpen(false)}
         />
