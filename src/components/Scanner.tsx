@@ -236,7 +236,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
               {!isLoading && !showSettings && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                   {/* Scanner Box - Enlarged */}
-                  <div className="relative w-72 h-72 sm:w-96 sm:h-96 border-2 border-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] rounded-lg">
+                  <div className="relative w-80 h-80 sm:w-[500px] sm:h-[500px] border-2 border-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] rounded-lg">
                     {/* Corners */}
                     <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-blue-500 rounded-tl-lg z-20"></div>
                     <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-blue-500 rounded-tr-lg z-20"></div>
