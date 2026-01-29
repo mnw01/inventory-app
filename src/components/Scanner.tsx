@@ -56,7 +56,6 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
 
         const config = {
           fps: 15,
-          qrbox: { width: 300, height: 150 }, // 条形码通常是宽扁形状
           aspectRatio: 1.0,
           formatsToSupport: [
             // 条形码格式
