@@ -240,7 +240,7 @@ function App() {
                       setExchangeRate(newRate);
                       localStorage.setItem('wms_exchange_rate', newRate.toString());
                     }}
-                    className="w-16 sm:w-20 bg-transparent border-b border-blue-300 focus:outline-none text-blue-700 font-bold text-right text-xs sm:text-sm"
+                    className="w-16 sm:w-20 bg-transparent focus:outline-none text-blue-700 font-bold text-center text-xs sm:text-sm"
                     title="可手动修改汇率"
                   />
                   <button
