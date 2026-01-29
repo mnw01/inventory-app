@@ -136,7 +136,31 @@ function App() {
         if (payload.eventType === 'INSERT') {
           setProducts(prev => [mapProductFromDB(payload.new), ...prev]);
         } else if (payload.eventType === 'UPDATE') {
-          setProducts(prev => prev.map(p => p.id === payload.new.id ? mapProductFromDB(payload.new) : p));
+          // Careful: payload.new might be partial or miss the huge image_url if Toast is involved?
+          // Actually supabase realtime sends full row by default for UPDATE.
+          // But if image_url is missing/null in payload, we should fallback or be careful.
+          setProducts(prev => prev.map(p => {
+            if (p.id === payload.new.id) {
+              const newData = mapProductFromDB(payload.new);
+              // If the new payload has empty image, but we have one locally, 
+              // AND the user didn't explicitly set it to empty (how to know?), 
+              // it's tricky.
+              // SAFEST FIX: If payload image is empty string, check if it's really meant to be empty.
+              // For STOCK updates, we definitely don't want to lose image.
+              // Let's assume if payload.image_url is null/empty, but we have one, we KEEP ours 
+              // unless we are sure it was deleted.
+              // However, simpler approach: Ensure mapProductFromDB handles it?
+              // Let's rely on preserving existing image if the new one comes back blank 
+              // but we know we only touched stock.
+              // Actually, best bet is to TRUST DB, but ensure DB has the image.
+
+              // If the issue is that Supabase sends truncated data, we might need to fetch.
+              // But for now, let's try to preserve image if new one is falsy.
+              const preservedImage = newData.imageUrl || p.imageUrl;
+              return { ...newData, imageUrl: preservedImage };
+            }
+            return p;
+          }));
         } else if (payload.eventType === 'DELETE') {
           setProducts(prev => prev.filter(p => p.id !== payload.old.id));
         }

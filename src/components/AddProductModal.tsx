@@ -97,21 +97,51 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limit file size to 1MB to prevent Supabase payload issues (standard REST limits often block large Base64)
-    if (file.size > 1024 * 1024) { // 1MB
-      setImageError('图片过大，请选择 1MB 以下的图片');
+    // Strict Limit: 2MB limit before compression
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError('图片过大，请选择 2MB 以下的图片');
       return;
     }
     setImageError('');
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result;
-      if (typeof result === 'string') {
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize logic
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Max dimension 800px (sufficient for phone screens)
+        const MAX_DIMENSION = 800;
+        if (width > height) {
+          if (width > MAX_DIMENSION) {
+            height *= MAX_DIMENSION / width;
+            width = MAX_DIMENSION;
+          }
+        } else {
+          if (height > MAX_DIMENSION) {
+            width *= MAX_DIMENSION / height;
+            height = MAX_DIMENSION;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Compress to JPEG with 0.6 quality
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+
         setFormData(prev => ({
           ...prev,
-          imageUrl: result,
+          imageUrl: compressedDataUrl,
         }));
+      };
+      if (typeof event.target?.result === 'string') {
+        img.src = event.target.result;
       }
     };
     reader.readAsDataURL(file);
