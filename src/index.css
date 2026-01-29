@@ -8,22 +8,49 @@ body {
 
 @layer utilities {
   @keyframes scan {
-    0%, 100% {
+
+    0%,
+    100% {
       top: 0%;
       opacity: 0;
     }
+
     10% {
       opacity: 1;
     }
+
     90% {
       opacity: 1;
     }
+
     100% {
       top: 100%;
       opacity: 0;
     }
   }
+
   .animate-scan {
     animation: scan 2.5s linear infinite;
   }
+}
+
+/* Quagga Scanner Styles */
+.quagga-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.quagga-viewport>video,
+.quagga-viewport>canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+.quagga-viewport>canvas.drawingBuffer {
+  display: none;
 }

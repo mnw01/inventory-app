@@ -171,8 +171,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
                     key={cam.deviceId}
                     onClick={() => switchCamera(cam.deviceId)}
                     className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${selectedCameraId === cam.deviceId
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                       }`}
                   >
                     <Camera size={18} />
@@ -182,8 +182,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
                 <button
                   onClick={() => switchCamera('')}
                   className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${selectedCameraId === ''
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                 >
                   <Camera size={18} />
@@ -207,7 +207,10 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
           ) : (
             <>
               {/* 扫描视图 */}
-              <div ref={scannerRef} className="w-full h-full" style={{ minHeight: '360px' }}>
+              <div
+                ref={scannerRef}
+                className="quagga-viewport w-full h-full absolute inset-0"
+              >
                 {/* Quagga 会在这里渲染视频 */}
               </div>
 
