@@ -55,8 +55,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         const html5QrCode = scannerRef.current;
 
         const config = {
-          // 放大扫码区域
-          qrbox: { width: 300, height: 300 },
+          fps: 10,
           aspectRatio: 1.0,
         };
 
