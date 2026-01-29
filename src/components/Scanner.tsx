@@ -65,7 +65,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             await html5QrCode.start(
               selectedCameraId,
               config,
-              (decodedText) => handleScan(decodedText),
+              (decodedText: string) => handleScan(decodedText),
               () => { }
             );
           } else {
@@ -73,7 +73,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             await html5QrCode.start(
               { facingMode: "environment" },
               config,
-              (decodedText) => handleScan(decodedText),
+              (decodedText: string) => handleScan(decodedText),
               () => { }
             );
           }
@@ -83,7 +83,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
           await html5QrCode.start(
             { facingMode: "user" },
             config,
-            (decodedText) => handleScan(decodedText),
+            (decodedText: string) => handleScan(decodedText),
             () => { }
           );
         }
@@ -113,11 +113,11 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
 
     // Get cameras only once
     // @ts-ignore
-    Html5Qrcode.getCameras().then(devices => {
+    Html5Qrcode.getCameras().then((devices: any[]) => {
       if (devices && devices.length) {
-        setCameras(devices.map(d => ({ id: d.id, label: d.label || `Camera ${d.id.substring(0, 5)}` })));
+        setCameras(devices.map((d: any) => ({ id: d.id, label: d.label || `Camera ${d.id.substring(0, 5)}` })));
       }
-    }).catch(err => console.warn("Error getting cameras", err));
+    }).catch((err: any) => console.warn("Error getting cameras", err));
 
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
