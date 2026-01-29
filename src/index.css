@@ -64,51 +64,14 @@ body {
   object-fit: cover !important;
 }
 
+/* 隐藏 html5-qrcode 可能生成的默认遮罩 */
 #reader__scan_region {
   position: relative;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-/* 隐藏 html5-qrcode 自带的灰色边框 */
-#reader__scan_region>br,
-#reader__scan_region>img {
+#reader__dashboard_section_csr span,
+#reader__dashboard_section_swaplink {
   display: none !important;
-}
-
-#reader__dashboard_section {
-  display: none !important;
-}
-
-#reader__scan_region::after {
-  content: '';
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #22c55e, transparent);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
-  animation: scanLine 2s linear infinite;
-  border-radius: 2px;
-}
-
-@keyframes scanLine {
-
-  0%,
-  100% {
-    top: 10%;
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  95%,
-  100% {
-    top: 90%;
-    opacity: 0;
-  }
 }
