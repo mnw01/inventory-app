@@ -55,27 +55,18 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         const html5QrCode = scannerRef.current;
 
         const config = {
-          fps: 15,
+          fps: 30, // 提高帧率加快扫描速度
           aspectRatio: 1.0,
+          disableFlip: false,
           formatsToSupport: [
-            // 条形码格式
+            // 只保留最常用的格式以提升速度
             0,  // QR_CODE
-            1,  // AZTEC
-            2,  // CODABAR
-            3,  // CODE_39
-            4,  // CODE_93
-            5,  // CODE_128
-            6,  // DATA_MATRIX
-            7,  // MAXICODE
-            8,  // ITF
-            9,  // EAN_13
+            5,  // CODE_128 - 最常用的物流条码
+            9,  // EAN_13 - 标准商品条码
             10, // EAN_8
-            11, // PDF_417
-            12, // RSS_14
-            13, // RSS_EXPANDED
             14, // UPC_A
             15, // UPC_E
-            16, // UPC_EAN_EXTENSION
+            3,  // CODE_39
           ],
         };
 
