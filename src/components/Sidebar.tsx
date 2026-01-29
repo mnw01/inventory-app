@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, X, Menu } from 'lucide-react';
+import { ClipboardList, X, Menu, Warehouse } from 'lucide-react';
 
 interface SidebarProps {
     onNavigate: (page: 'inventory' | 'records') => void;
@@ -10,6 +10,12 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     const menuItems = [
+        {
+            id: 'inventory',
+            icon: Warehouse,
+            label: '商品列表',
+            page: 'inventory' as const,
+        },
         {
             id: 'records',
             icon: ClipboardList,
@@ -23,11 +29,11 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
             {/* Toggle Button - Fixed on right side */}
             <button
                 onClick={() => setIsOpen(true)}
-                className={`fixed right-4 top-4 z-50 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 hover:scale-105 ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                className={`fixed right-4 top-4 z-50 bg-indigo-600 text-white p-2 rounded-lg shadow-lg hover:bg-indigo-700 transition-all duration-300 hover:scale-105 ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
                     }`}
                 title="打开菜单"
             >
-                <Menu size={24} />
+                <Menu size={18} />
             </button>
 
             {/* Overlay */}
@@ -63,14 +69,14 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
                                 setIsOpen(false);
                             }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 mb-2 ${currentPage === item.page
-                                    ? 'bg-indigo-50 text-indigo-600 shadow-sm'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'
+                                ? 'bg-indigo-50 text-indigo-600 shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'
                                 }`}
                         >
                             <div
                                 className={`p-2 rounded-lg ${currentPage === item.page
-                                        ? 'bg-indigo-100'
-                                        : 'bg-gray-100 group-hover:bg-indigo-100'
+                                    ? 'bg-indigo-100'
+                                    : 'bg-gray-100 group-hover:bg-indigo-100'
                                     }`}
                             >
                                 <item.icon
