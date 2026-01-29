@@ -9,8 +9,7 @@ import { Product, TransactionType, TransactionRecord } from './types';
 import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check, X, Cloud } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
-// Mock initial data (fallback)
-const initialProducts: Product[] = [];
+// Mock initial data (fallback) removed as we use Supabase now
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -482,6 +481,9 @@ function App() {
                           minute: '2-digit'
                         })}
                       </span>
+                    )}
+                    {rateError && (
+                      <span className="text-xs text-amber-600">{rateError}</span>
                     )}
                   </div>
                 </div>
