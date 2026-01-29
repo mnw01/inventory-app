@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Product, CustomsStatus } from '../types';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, Info } from 'lucide-react';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -11,7 +11,15 @@ interface AddProductModalProps {
   initialSku?: string;
 }
 
-type ProductFormData = Omit<Product, 'id'>;
+// Internal form state allows strings for numbers to support intermediate editing states (e.g. "0.", "")
+interface FormState {
+  name: string;
+  sku: string;
+  imageUrl: string;
+  stock: string | number;
+  costPrice: string | number;
+  customsStatus: CustomsStatus;
+}
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({
   isOpen,
@@ -21,17 +29,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   editingProduct,
   initialSku = '',
 }) => {
-  const [formData, setFormData] = useState<ProductFormData>({
+  const [formData, setFormData] = useState<FormState>({
     name: '',
     sku: '',
     imageUrl: '',
     stock: 0,
     costPrice: 0,
-    customsStatus: 'arrived' as CustomsStatus,
+    customsStatus: 'arrived',
   });
+
+  const [imageError, setImageError] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
+    setImageError('');
 
     if (editingProduct) {
       const { id, ...rest } = editingProduct;
@@ -53,13 +64,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prepare data for submission (convert strings back to numbers)
+    const submissionData = {
+      ...formData,
+      stock: Number(formData.stock),
+      costPrice: Number(formData.costPrice),
+    };
+
     if (editingProduct && onUpdate) {
       onUpdate({
         ...editingProduct,
-        ...formData,
+        ...submissionData,
       });
     } else {
-      onAdd(formData);
+      onAdd(submissionData);
     }
 
     onClose();
@@ -67,20 +85,24 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+
+    // allow setting raw value to state to fix "cannot delete 0" or "cannot type 0.5" issues
     setFormData(prev => ({
       ...prev,
-      [name]:
-        name === 'stock' || name === 'costPrice'
-          ? value === ''
-            ? 0
-            : parseFloat(value)
-          : value,
+      [name]: value,
     }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Limit file size to 1MB to prevent Supabase payload issues (standard REST limits often block large Base64)
+    if (file.size > 1024 * 1024) { // 1MB
+      setImageError('图片过大，请选择 1MB 以下的图片');
+      return;
+    }
+    setImageError('');
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -115,40 +137,57 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">SKU (商品编码)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">SKU (商品编码) <span className="text-red-500">*</span></label>
             <input
               name="sku"
               value={formData.sku}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               required
+              placeholder="例如: SHIRT-W-L"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">商品名称</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">商品名称 <span className="text-red-500">*</span></label>
             <input
               name="name"
               value={formData.name}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               required
+              placeholder="例如: 夏季T恤"
             />
           </div>
 
+          {/* Image Upload Section */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">商品图片</label>
+
             <div className="flex gap-2 items-center">
+              {/* 隐藏过长的 Base64 字符串输入框，防止用户困惑，改用只读显示状态 */}
               <input
                 name="imageUrl"
-                value={formData.imageUrl}
-                onChange={handleChange}
-                placeholder="图片链接（可选）"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
+                value={formData.imageUrl.startsWith('data:') ? '(已选择本地图片)' : formData.imageUrl}
+                onChange={(e) => {
+                  // Only allow editing if it's NOT a data URL (i.e. if user is typing a http link)
+                  if (!formData.imageUrl.startsWith('data:')) {
+                    handleChange(e);
+                  } else {
+                    // If user wants to clear Base64, they can clear this field
+                    if (e.target.value === '') {
+                      setFormData(prev => ({ ...prev, imageUrl: '' }));
+                    }
+                  }
+                }}
+                disabled={formData.imageUrl.startsWith('data:')}
+                placeholder="输入图片链接 或 上传本地图片"
+                className={`flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm ${formData.imageUrl.startsWith('data:') ? 'bg-gray-100 text-gray-500' : ''}`}
               />
-              <label className="shrink-0 inline-flex items-center justify-center px-2 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 bg-gray-50 text-xs sm:text-sm">
-                <Upload size={14} className="mr-1" />
-                本地
+
+              <label className="shrink-0 inline-flex items-center justify-center px-3 py-2 border border-dashed border-gray-300 rounded-md text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer text-xs sm:text-sm transition-colors">
+                <Upload size={16} className="mr-1" />
+                <span>选择图片</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -157,23 +196,41 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 />
               </label>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">
-                支持网络图片或本地上传，推荐小尺寸图片以提升手机加载速度
-              </span>
-            </div>
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded border flex items-center justify-center overflow-hidden mt-1">
+
+            {imageError && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <Info size={12} /> {imageError}
+              </p>
+            )}
+
+            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 rounded border border-gray-200 flex items-center justify-center overflow-hidden relative group">
               {formData.imageUrl ? (
-                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                <>
+                  <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                    className="absolute inset-0 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                    title="移除图片"
+                  >
+                    <X size={20} />
+                  </button>
+                </>
               ) : (
-                <Upload size={18} className="text-gray-300" />
+                <div className="text-center p-2">
+                  <Upload size={20} className="text-gray-300 mx-auto mb-1" />
+                  <span className="text-[10px] text-gray-400">无图片</span>
+                </div>
               )}
             </div>
+            <p className="text-xs text-gray-400">
+              提示：图片大小建议小于 1MB，否则可能导致保存失败。
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">库存数量</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">库存数量 (件)</label>
               <input
                 type="number"
                 name="stock"
@@ -216,9 +273,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full bg-indigo-600 text-white py-2.5 rounded-md hover:bg-indigo-700 active:bg-indigo-800 transition-colors font-medium text-sm"
+              className="w-full bg-indigo-600 text-white py-2.5 rounded-md hover:bg-indigo-700 active:bg-indigo-800 transition-colors font-medium text-sm shadow-sm"
             >
-              {isEditMode ? '保存修改' : '添加商品'}
+              {isEditMode ? '保存修改' : '确认添加'}
             </button>
           </div>
         </form>
