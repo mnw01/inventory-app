@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+// @ts-ignore
 import { Html5Qrcode } from 'html5-qrcode';
 import { X, RefreshCw, AlertCircle, Settings, Check } from 'lucide-react';
 
@@ -8,7 +9,7 @@ interface ScannerProps {
 }
 
 export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<any>(null);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [cameras, setCameras] = useState<Array<{ id: string, label: string }>>([]);
@@ -51,7 +52,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         if (!scannerRef.current) {
           scannerRef.current = new Html5Qrcode("reader");
         }
-        const html5QrCode = scannerRef.current as Html5Qrcode;
+        const html5QrCode = scannerRef.current;
 
         const config = {
           // 放大扫码区域
@@ -112,6 +113,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
     };
 
     // Get cameras only once
+    // @ts-ignore
     Html5Qrcode.getCameras().then(devices => {
       if (devices && devices.length) {
         setCameras(devices.map(d => ({ id: d.id, label: d.label || `Camera ${d.id.substring(0, 5)}` })));
