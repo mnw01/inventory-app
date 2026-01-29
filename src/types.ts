@@ -19,3 +19,12 @@ export interface Transaction {
   quantity: number;
   date: string;
 }
+
+export interface TransactionRecord {
+  id: string;
+  productId: string;
+  type: TransactionType;
+  quantity: number;
+  date: string;
+  note?: string;
+}

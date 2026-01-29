@@ -3,7 +3,9 @@ import { ProductList } from './components/ProductList';
 import { StockModal } from './components/StockModal';
 import { AddProductModal } from './components/AddProductModal';
 import { Scanner } from './components/Scanner';
-import { Product, TransactionType } from './types';
+import { Sidebar } from './components/Sidebar';
+import { TransactionRecords } from './components/TransactionRecords';
+import { Product, TransactionType, TransactionRecord } from './types';
 import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check } from 'lucide-react';
 
 // Mock initial data
@@ -62,6 +64,18 @@ function App() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'success'>('idle');
+  const [currentPage, setCurrentPage] = useState<'inventory' | 'records'>('inventory');
+
+  // 出入库记录
+  const [transactionRecords, setTransactionRecords] = useState<TransactionRecord[]>(() => {
+    const saved = localStorage.getItem('wms_transaction_records');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // 保存交易记录到 localStorage
+  useEffect(() => {
+    localStorage.setItem('wms_transaction_records', JSON.stringify(transactionRecords));
+  }, [transactionRecords]);
 
   // 获取实时汇率
   const fetchExchangeRate = async () => {
@@ -165,6 +179,16 @@ function App() {
       }
       return p;
     }));
+
+    // 添加出入库记录
+    const newRecord: TransactionRecord = {
+      id: Date.now().toString(),
+      productId: selectedProduct.id,
+      type,
+      quantity,
+      date: new Date().toISOString(),
+    };
+    setTransactionRecords(prev => [newRecord, ...prev]);
   };
 
   const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
@@ -202,156 +226,168 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header / Navbar */}
-      <header className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="bg-indigo-600 p-2 rounded-lg text-white">
-                <Warehouse size={24} />
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">仓库管理系统</h1>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
 
-            <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
-              <div className="relative w-full sm:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search size={18} className="text-gray-400" />
+      {/* Main Container with left padding for sidebar */}
+      <div className="flex-1 flex flex-col ml-14">
+        {/* Header / Navbar */}
+        <header className="bg-white shadow-sm sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="bg-indigo-600 p-2 rounded-lg text-white">
+                  <Warehouse size={24} />
                 </div>
-                <input
-                  type="text"
-                  placeholder="搜索 SKU 或名称..."
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button
-                  onClick={() => setIsScannerOpen(true)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-indigo-600"
-                  title="扫码识别"
-                >
-                  <ScanBarcode size={20} />
-                </button>
+                <h1 className="text-2xl font-bold text-gray-900">仓库管理系统</h1>
               </div>
 
-              <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-full sm:w-auto">
-                <DollarSign size={18} className="text-blue-600" />
-                <span className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">汇率 (CNY:IDR)</span>
-                <div className="flex items-center gap-1">
+              <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search size={18} className="text-gray-400" />
+                  </div>
                   <input
-                    type="number"
-                    value={exchangeRate}
-                    onChange={(e) => {
-                      const newRate = Number(e.target.value);
-                      setExchangeRate(newRate);
-                      localStorage.setItem('wms_exchange_rate', newRate.toString());
-                    }}
-                    className="w-16 sm:w-20 bg-transparent focus:outline-none text-blue-700 font-bold text-center text-xs sm:text-sm"
-                    title="可手动修改汇率"
+                    type="text"
+                    placeholder="搜索 SKU 或名称..."
+                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                   <button
-                    onClick={fetchExchangeRate}
-                    disabled={isLoadingRate || updateStatus === 'success'}
-                    className={`p-1 rounded transition-colors disabled:opacity-50 ${updateStatus === 'success'
-                      ? 'text-green-600 bg-green-50'
-                      : 'text-blue-600 hover:text-blue-700 hover:bg-blue-100'
-                      }`}
-                    title={updateStatus === 'success' ? "更新成功" : "刷新实时汇率"}
+                    onClick={() => setIsScannerOpen(true)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-indigo-600"
+                    title="扫码识别"
                   >
-                    {updateStatus === 'success' ? (
-                      <Check size={14} className="animate-in zoom-in duration-300" />
-                    ) : (
-                      <RefreshCw size={14} className={isLoadingRate ? 'animate-spin' : ''} />
-                    )}
+                    <ScanBarcode size={20} />
                   </button>
                 </div>
-                {lastRateUpdate && (
-                  <span className="text-xs text-gray-400 hidden sm:inline">
-                    更新于 {new Date(lastRateUpdate).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-              </div>
 
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setIsAddModalOpen(true);
-                }}
-                className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Plus size={20} />
-                <span className="font-medium">新增商品</span>
-              </button>
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-full sm:w-auto">
+                  <DollarSign size={18} className="text-blue-600" />
+                  <span className="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">汇率 (CNY:IDR)</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={exchangeRate}
+                      onChange={(e) => {
+                        const newRate = Number(e.target.value);
+                        setExchangeRate(newRate);
+                        localStorage.setItem('wms_exchange_rate', newRate.toString());
+                      }}
+                      className="w-16 sm:w-20 bg-transparent focus:outline-none text-blue-700 font-bold text-center text-xs sm:text-sm"
+                      title="可手动修改汇率"
+                    />
+                    <button
+                      onClick={fetchExchangeRate}
+                      disabled={isLoadingRate || updateStatus === 'success'}
+                      className={`p-1 rounded transition-colors disabled:opacity-50 ${updateStatus === 'success'
+                        ? 'text-green-600 bg-green-50'
+                        : 'text-blue-600 hover:text-blue-700 hover:bg-blue-100'
+                        }`}
+                      title={updateStatus === 'success' ? "更新成功" : "刷新实时汇率"}
+                    >
+                      {updateStatus === 'success' ? (
+                        <Check size={14} className="animate-in zoom-in duration-300" />
+                      ) : (
+                        <RefreshCw size={14} className={isLoadingRate ? 'animate-spin' : ''} />
+                      )}
+                    </button>
+                  </div>
+                  {lastRateUpdate && (
+                    <span className="text-xs text-gray-400 hidden sm:inline">
+                      更新于 {new Date(lastRateUpdate).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setIsAddModalOpen(true);
+                  }}
+                  className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Plus size={20} />
+                  <span className="font-medium">新增商品</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
-          <h2 className="text-lg font-semibold text-gray-700">商品列表 ({filteredProducts.length})</h2>
-          <div className="flex flex-col sm:items-end gap-1">
-            <span className="text-sm text-gray-500">
-              当前汇率: 1 CNY = <span className="font-semibold text-blue-600">{exchangeRate.toLocaleString('id-ID')}</span> IDR
-            </span>
-            {lastRateUpdate && (
-              <span className="text-xs text-gray-400">
-                更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            )}
-            {rateError && (
-              <span className="text-xs text-amber-600">{rateError}</span>
-            )}
+        {/* Main Content */}
+        <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+          {currentPage === 'inventory' ? (
+            <>
+              <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
+                <h2 className="text-lg font-semibold text-gray-700">商品列表 ({filteredProducts.length})</h2>
+                <div className="flex flex-col sm:items-end gap-1">
+                  <span className="text-sm text-gray-500">
+                    当前汇率: 1 CNY = <span className="font-semibold text-blue-600">{exchangeRate.toLocaleString('id-ID')}</span> IDR
+                  </span>
+                  {lastRateUpdate && (
+                    <span className="text-xs text-gray-400">
+                      更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  )}
+                  {rateError && (
+                    <span className="text-xs text-amber-600">{rateError}</span>
+                  )}
+                </div>
+              </div>
+
+              <ProductList
+                products={filteredProducts}
+                exchangeRate={exchangeRate}
+                onStockAction={handleStockAction}
+                onEdit={handleEditProduct}
+              />
+            </>
+          ) : (
+            <TransactionRecords records={transactionRecords} products={products} />
+          )}
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t py-6 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+            &copy; {new Date().getFullYear()} Warehouse Management System.
           </div>
-        </div>
+        </footer>
 
-        <ProductList
-          products={filteredProducts}
-          exchangeRate={exchangeRate}
-          onStockAction={handleStockAction}
-          onEdit={handleEditProduct}
+        {/* Modals */}
+        <StockModal
+          isOpen={isStockModalOpen}
+          onClose={() => setIsStockModalOpen(false)}
+          product={selectedProduct}
+          onConfirm={handleStockConfirm}
         />
-      </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-          &copy; {new Date().getFullYear()} Warehouse Management System.
-        </div>
-      </footer>
-
-      {/* Modals */}
-      <StockModal
-        isOpen={isStockModalOpen}
-        onClose={() => setIsStockModalOpen(false)}
-        product={selectedProduct}
-        onConfirm={handleStockConfirm}
-      />
-
-      <AddProductModal
-        isOpen={isAddModalOpen}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setEditingProduct(null);
-        }}
-        onAdd={handleAddProduct}
-        onUpdate={handleUpdateProduct}
-        editingProduct={editingProduct}
-      />
-
-      {isScannerOpen && (
-        <Scanner
-          onScanSuccess={handleScanSuccess}
-          onClose={() => setIsScannerOpen(false)}
+        <AddProductModal
+          isOpen={isAddModalOpen}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingProduct(null);
+          }}
+          onAdd={handleAddProduct}
+          onUpdate={handleUpdateProduct}
+          editingProduct={editingProduct}
         />
-      )}
+
+        {isScannerOpen && (
+          <Scanner
+            onScanSuccess={handleScanSuccess}
+            onClose={() => setIsScannerOpen(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }
