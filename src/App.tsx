@@ -6,48 +6,18 @@ import { Scanner } from './components/Scanner';
 import { Sidebar } from './components/Sidebar';
 import { TransactionRecords } from './components/TransactionRecords';
 import { Product, TransactionType, TransactionRecord } from './types';
-import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check, X } from 'lucide-react';
+import { Search, Plus, DollarSign, Warehouse, ScanBarcode, RefreshCw, Check, X, Cloud } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
-// Mock initial data
-const initialProducts: Product[] = [
-  {
-    id: '1',
-    sku: 'SKU001',
-    name: '夏季纯棉T恤 白色 L码',
-    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    stock: 120,
-    costPrice: 25.00,
-    customsStatus: 'cleared'
-  },
-  {
-    id: '2',
-    sku: 'SKU002',
-    name: '牛仔短裤 蓝色 M码',
-    imageUrl: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    stock: 45,
-    costPrice: 45.50,
-    customsStatus: 'clearing'
-  },
-  {
-    id: '3',
-    sku: 'SKU003',
-    name: '运动跑鞋 黑色 42码',
-    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80',
-    stock: 8,
-    costPrice: 120.00,
-    customsStatus: 'arrived'
-  }
-];
+// Mock initial data (fallback)
+const initialProducts: Product[] = [];
 
 function App() {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('wms_products');
-    return saved ? JSON.parse(saved) : initialProducts;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [exchangeRate, setExchangeRate] = useState<number>(() => {
-    // 从localStorage读取保存的汇率，如果没有则使用默认值
     const saved = localStorage.getItem('wms_exchange_rate');
     return saved ? parseFloat(saved) : 2200;
   });
@@ -68,35 +38,142 @@ function App() {
   const [scannedSku, setScannedSku] = useState('');
 
   // 出入库记录
-  const [transactionRecords, setTransactionRecords] = useState<TransactionRecord[]>(() => {
-    const saved = localStorage.getItem('wms_transaction_records');
-    return saved ? JSON.parse(saved) : [];
+  const [transactionRecords, setTransactionRecords] = useState<TransactionRecord[]>([]);
+
+  // --- Supabase Data Fetching & Realtime ---
+
+  const mapProductFromDB = (data: any): Product => ({
+    id: data.id,
+    sku: data.sku,
+    name: data.name,
+    imageUrl: data.image_url || '',
+    stock: data.stock,
+    costPrice: data.cost_price,
+    customsStatus: data.customs_status || 'arrived',
   });
 
-  // 保存交易记录到 localStorage
-  useEffect(() => {
-    localStorage.setItem('wms_transaction_records', JSON.stringify(transactionRecords));
-  }, [transactionRecords]);
+  const mapTransactionFromDB = (data: any): TransactionRecord => ({
+    id: data.id,
+    productId: data.product_id,
+    type: data.type as TransactionType,
+    quantity: data.quantity,
+    date: data.timestamp,
+    note: '', // DB schema simple for now
+  });
 
-  // 获取实时汇率
+  const fetchData = async () => {
+    setIsLoadingData(true);
+    try {
+      // Fetch Products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (productsError) throw productsError;
+
+      // Fetch Transactions
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (transactionsError) throw transactionsError;
+
+      const loadedProducts = (productsData || []).map(mapProductFromDB);
+      setProducts(loadedProducts);
+      setTransactionRecords((transactionsData || []).map(mapTransactionFromDB));
+
+      // ** Data Migration Logic **
+      // If DB is empty but LocalStorage has data, migrate it automatically.
+      if (loadedProducts.length === 0) {
+        const localProducts = localStorage.getItem('wms_products');
+        if (localProducts) {
+          try {
+            const parsedLocal: Product[] = JSON.parse(localProducts);
+            if (parsedLocal.length > 0) {
+              console.log('Migrating local data to Supabase...');
+              const productsToInsert = parsedLocal.map(p => ({
+                id: p.id, // Keep existing ID
+                sku: p.sku,
+                name: p.name,
+                image_url: p.imageUrl,
+                stock: p.stock,
+                cost_price: p.costPrice,
+                customs_status: p.customsStatus
+              }));
+
+              const { error: migrateError } = await supabase.from('products').insert(productsToInsert);
+              if (!migrateError) {
+                console.log('Migration successful');
+                // Auto reload to fetch fresh data
+                fetchData();
+              } else {
+                console.error('Migration failed:', migrateError);
+              }
+            }
+          } catch (e) {
+            console.error('Migration parse error', e);
+          }
+        }
+      }
+
+    } catch (err) {
+      console.error('Error fetching data from Supabase:', err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    // Subscribe to Realtime changes
+    const productSubscription = supabase
+      .channel('public:products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        console.log('Realtime product update:', payload);
+        if (payload.eventType === 'INSERT') {
+          setProducts(prev => [mapProductFromDB(payload.new), ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setProducts(prev => prev.map(p => p.id === payload.new.id ? mapProductFromDB(payload.new) : p));
+        } else if (payload.eventType === 'DELETE') {
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    const transactionSubscription = supabase
+      .channel('public:transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => {
+        console.log('Realtime transaction update:', payload);
+        if (payload.eventType === 'INSERT') {
+          setTransactionRecords(prev => [mapTransactionFromDB(payload.new), ...prev]);
+        }
+        // Usually we don't update/delete transactions, but if needed, add logic here
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productSubscription);
+      supabase.removeChannel(transactionSubscription);
+    };
+  }, []);
+
+  // 获取实时汇率 (Unchanged)
   const fetchExchangeRate = async () => {
     setIsLoadingRate(true);
     setRateError('');
     let hasError = false;
 
     try {
-      // 优先使用 exchangerate-api.com 免费端点（无需API key）
       let response = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
       let data;
 
       if (!response.ok) {
-        // 备用方案：使用 exchangerate.host
         response = await fetch('https://api.exchangerate.host/latest?base=CNY&symbols=IDR');
-        if (!response.ok) {
-          throw new Error('获取汇率失败');
-        }
+        if (!response.ok) throw new Error('获取汇率失败');
         data = await response.json();
-
         if (data.success && data.rates && data.rates.IDR) {
           const rate = Math.round(data.rates.IDR);
           setExchangeRate(rate);
@@ -110,13 +187,10 @@ function App() {
       }
 
       data = await response.json();
-
-      // exchangerate-api.com 返回格式: { rates: { IDR: 2308.63 } }
       if (data.rates && data.rates.IDR) {
         const rate = Math.round(data.rates.IDR);
         setExchangeRate(rate);
         setLastRateUpdate(new Date());
-        // 保存到localStorage
         localStorage.setItem('wms_exchange_rate', rate.toString());
         localStorage.setItem('wms_rate_update_time', new Date().toISOString());
       } else {
@@ -126,7 +200,6 @@ function App() {
       console.error('获取汇率失败:', err);
       setRateError('获取实时汇率失败，使用本地保存的汇率');
       hasError = true;
-      // 如果失败，保留当前汇率值
     } finally {
       setIsLoadingRate(false);
       if (!hasError) {
@@ -136,23 +209,13 @@ function App() {
     }
   };
 
-  // 组件加载时获取汇率，之后每30分钟更新一次
   useEffect(() => {
-    // 立即获取一次
     fetchExchangeRate();
-
-    // 每30分钟更新一次
     const interval = setInterval(() => {
       fetchExchangeRate();
-    }, 30 * 60 * 1000); // 30分钟
-
+    }, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-
-  // Persistence
-  useEffect(() => {
-    localStorage.setItem('wms_products', JSON.stringify(products));
-  }, [products]);
 
   // Filter products
   const filteredProducts = products.filter(product =>
@@ -170,40 +233,77 @@ function App() {
     setIsAddModalOpen(true);
   };
 
-  const handleStockConfirm = (type: TransactionType, quantity: number) => {
+  const handleStockConfirm = async (type: TransactionType, quantity: number) => {
     if (!selectedProduct) return;
 
-    setProducts(prevProducts => prevProducts.map(p => {
-      if (p.id === selectedProduct.id) {
-        const newStock = type === 'in' ? p.stock + quantity : p.stock - quantity;
-        return { ...p, stock: Math.max(0, newStock) };
-      }
-      return p;
-    }));
+    const newStock = type === 'in' ? selectedProduct.stock + quantity : selectedProduct.stock - quantity;
+    const finalStock = Math.max(0, newStock);
 
-    // 添加出入库记录
-    const newRecord: TransactionRecord = {
-      id: Date.now().toString(),
-      productId: selectedProduct.id,
-      type,
-      quantity,
-      date: new Date().toISOString(),
-    };
-    setTransactionRecords(prev => [newRecord, ...prev]);
+    // Update Product in DB
+    const { error: productError } = await supabase
+      .from('products')
+      .update({ stock: finalStock })
+      .eq('id', selectedProduct.id);
+
+    if (productError) {
+      console.error('Failed to update stock:', productError);
+      alert('库存更新失败，请重试');
+      return;
+    }
+
+    // Create Transaction Record in DB
+    const { error: txError } = await supabase
+      .from('transactions')
+      .insert({
+        product_id: selectedProduct.id,
+        type,
+        quantity,
+        timestamp: new Date().toISOString(),
+        price: selectedProduct.costPrice // Snapshot price
+      });
+
+    if (txError) {
+      console.error('Failed to record transaction:', txError);
+    }
   };
 
-  const handleAddProduct = (newProductData: Omit<Product, 'id'>) => {
-    const newProduct: Product = {
-      ...newProductData,
-      id: Date.now().toString(),
-    };
-    setProducts(prev => [newProduct, ...prev]);
+  const handleAddProduct = async (newProductData: Omit<Product, 'id'>) => {
+    // Insert into DB
+    const { error } = await supabase
+      .from('products')
+      .insert({
+        sku: newProductData.sku,
+        name: newProductData.name,
+        image_url: newProductData.imageUrl,
+        stock: newProductData.stock,
+        cost_price: newProductData.costPrice,
+        customs_status: newProductData.customsStatus
+      });
+
+    if (error) {
+      console.error('Failed to add product:', error);
+      alert(`添加失败: ${error.message}`);
+    }
   };
 
-  const handleUpdateProduct = (updatedProduct: Product) => {
-    setProducts(prev =>
-      prev.map(p => (p.id === updatedProduct.id ? updatedProduct : p)),
-    );
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    // Update DB
+    const { error } = await supabase
+      .from('products')
+      .update({
+        sku: updatedProduct.sku,
+        name: updatedProduct.name,
+        image_url: updatedProduct.imageUrl,
+        stock: updatedProduct.stock,
+        cost_price: updatedProduct.costPrice,
+        customs_status: updatedProduct.customsStatus
+      })
+      .eq('id', updatedProduct.id);
+
+    if (error) {
+      console.error('Failed to update product:', error);
+      alert(`更新失败: ${error.message}`);
+    }
   };
 
   const handleScanSuccess = (decodedText: string) => {
@@ -215,7 +315,6 @@ function App() {
     if (match) {
       handleStockAction(match);
     } else {
-      // If not found, prompt to add with pre-filled SKU
       if (confirm(`未找到商品 SKU: ${decodedText}。是否立即添加新商品？`)) {
         setScannedSku(decodedText);
         setEditingProduct(null);
@@ -239,7 +338,7 @@ function App() {
                 <div className="bg-indigo-600 p-2 rounded-lg text-white">
                   <Warehouse size={24} />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900">仓库管理系统</h1>
+                <h1 className="text-2xl font-bold text-gray-900">仓库管理系统 (云同步版)</h1>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
@@ -305,11 +404,6 @@ function App() {
                       )}
                     </button>
                   </div>
-                  {lastRateUpdate && (
-                    <span className="text-xs text-gray-400 hidden sm:inline">
-                      更新于 {new Date(lastRateUpdate).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  )}
                 </div>
 
                 <button
@@ -329,46 +423,50 @@ function App() {
 
         {/* Main Content */}
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-          {currentPage === 'inventory' ? (
-            <>
-              <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
-                <h2 className="text-lg font-semibold text-gray-700">商品列表 ({filteredProducts.length})</h2>
-                <div className="flex flex-col sm:items-end gap-1">
-                  <span className="text-sm text-gray-500">
-                    当前汇率: 1 CNY = <span className="font-semibold text-blue-600">{exchangeRate.toLocaleString('id-ID')}</span> IDR
-                  </span>
-                  {lastRateUpdate && (
-                    <span className="text-xs text-gray-400">
-                      更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  )}
-                  {rateError && (
-                    <span className="text-xs text-amber-600">{rateError}</span>
-                  )}
-                </div>
-              </div>
-
-              <ProductList
-                products={filteredProducts}
-                exchangeRate={exchangeRate}
-                onStockAction={handleStockAction}
-                onEdit={handleEditProduct}
-              />
-            </>
+          {isLoadingData ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <Cloud className="w-12 h-12 mb-4 animate-pulse text-indigo-400" />
+              <p>正在同步云端数据...</p>
+            </div>
           ) : (
-            <TransactionRecords records={transactionRecords} products={products} />
+            currentPage === 'inventory' ? (
+              <>
+                <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
+                  <h2 className="text-lg font-semibold text-gray-700">商品列表 ({filteredProducts.length})</h2>
+                  <div className="flex flex-col sm:items-end gap-1">
+                    <span className="text-sm text-gray-500">
+                      当前汇率: 1 CNY = <span className="font-semibold text-blue-600">{exchangeRate.toLocaleString('id-ID')}</span> IDR
+                    </span>
+                    {lastRateUpdate && (
+                      <span className="text-xs text-gray-400">
+                        更新时间: {new Date(lastRateUpdate).toLocaleString('zh-CN', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <ProductList
+                  products={filteredProducts}
+                  exchangeRate={exchangeRate}
+                  onStockAction={handleStockAction}
+                  onEdit={handleEditProduct}
+                />
+              </>
+            ) : (
+              <TransactionRecords records={transactionRecords} products={products} />
+            )
           )}
         </main>
 
         {/* Footer */}
         <footer className="bg-white border-t py-6 mt-auto">
           <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} Warehouse Management System.
+            &copy; {new Date().getFullYear()} Warehouse Management System (Supabase Enabled).
           </div>
         </footer>
 
