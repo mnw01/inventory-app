@@ -226,12 +226,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Sidebar - slides in from right */}
       <Sidebar onNavigate={setCurrentPage} currentPage={currentPage} />
 
-      {/* Main Container with left padding for sidebar */}
-      <div className="flex-1 flex flex-col ml-14">
+      {/* Main Container */}
+      <div className="flex flex-col min-h-screen">
         {/* Header / Navbar */}
         <header className="bg-white shadow-sm sticky top-0 z-30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, ChevronRight } from 'lucide-react';
+import { ClipboardList, X, Menu } from 'lucide-react';
 
 interface SidebarProps {
     onNavigate: (page: 'inventory' | 'records') => void;
@@ -7,8 +7,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [showMenu, setShowMenu] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
 
     const menuItems = [
         {
@@ -21,88 +20,78 @@ export function Sidebar({ onNavigate, currentPage }: SidebarProps) {
 
     return (
         <>
-            {/* Sidebar */}
-            <aside
-                className={`fixed left-0 top-0 h-full bg-white shadow-lg z-40 transition-all duration-300 ease-in-out ${isExpanded ? 'w-48' : 'w-14'
+            {/* Toggle Button - Fixed on right side */}
+            <button
+                onClick={() => setIsOpen(true)}
+                className={`fixed right-4 top-4 z-50 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 hover:scale-105 ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
                     }`}
-                onMouseEnter={() => setIsExpanded(true)}
-                onMouseLeave={() => {
-                    setIsExpanded(false);
-                    setShowMenu(false);
-                }}
+                title="打开菜单"
             >
-                {/* Logo/Brand area */}
-                <div className="h-16 flex items-center justify-center border-b border-gray-100">
-                    <div
-                        className={`bg-indigo-600 p-2 rounded-lg text-white cursor-pointer transition-transform hover:scale-105 ${isExpanded ? '' : ''
-                            }`}
-                        onClick={() => {
-                            onNavigate('inventory');
-                            setShowMenu(false);
-                        }}
+                <Menu size={24} />
+            </button>
+
+            {/* Overlay */}
+            <div
+                className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}
+                onClick={() => setIsOpen(false)}
+            />
+
+            {/* Sidebar Panel */}
+            <aside
+                className={`fixed right-0 top-0 h-full w-72 bg-white shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+                    }`}
+            >
+                {/* Header */}
+                <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 bg-gradient-to-r from-indigo-600 to-indigo-700">
+                    <h2 className="text-lg font-semibold text-white">菜单</h2>
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
                     >
-                        <ClipboardList size={20} />
-                    </div>
+                        <X size={20} />
+                    </button>
                 </div>
 
                 {/* Menu Items */}
-                <nav className="mt-4 px-2">
+                <nav className="p-4">
                     {menuItems.map((item) => (
-                        <div key={item.id} className="relative">
-                            <button
-                                onClick={() => {
-                                    setShowMenu(!showMenu);
-                                    onNavigate(item.page);
-                                }}
-                                className={`w-full flex items-center gap-3 px-2 py-3 rounded-lg transition-all duration-200 group ${currentPage === item.page
-                                    ? 'bg-indigo-50 text-indigo-600'
+                        <button
+                            key={item.id}
+                            onClick={() => {
+                                onNavigate(item.page);
+                                setIsOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 mb-2 ${currentPage === item.page
+                                    ? 'bg-indigo-50 text-indigo-600 shadow-sm'
                                     : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'
+                                }`}
+                        >
+                            <div
+                                className={`p-2 rounded-lg ${currentPage === item.page
+                                        ? 'bg-indigo-100'
+                                        : 'bg-gray-100 group-hover:bg-indigo-100'
                                     }`}
                             >
                                 <item.icon
-                                    size={22}
-                                    className={`flex-shrink-0 ${currentPage === item.page ? 'text-indigo-600' : 'text-gray-500 group-hover:text-indigo-600'
-                                        }`}
+                                    size={20}
+                                    className={
+                                        currentPage === item.page ? 'text-indigo-600' : 'text-gray-500'
+                                    }
                                 />
-                                <span
-                                    className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'
-                                        }`}
-                                >
-                                    {item.label}
-                                </span>
-                                {isExpanded && (
-                                    <ChevronRight
-                                        size={16}
-                                        className={`ml-auto transition-transform duration-200 ${showMenu ? 'rotate-90' : ''
-                                            }`}
-                                    />
-                                )}
-                            </button>
-                        </div>
+                            </div>
+                            <span className="font-medium">{item.label}</span>
+                        </button>
                     ))}
                 </nav>
 
-                {/* Expand/Collapse indicator */}
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                    <div
-                        className={`p-1 rounded-full bg-gray-100 text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''
-                            }`}
-                    >
-                        <ChevronRight size={16} />
-                    </div>
+                {/* Footer hint */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
+                    <p className="text-xs text-gray-400 text-center">
+                        点击菜单项切换页面
+                    </p>
                 </div>
             </aside>
-
-            {/* Overlay when expanded on mobile */}
-            {isExpanded && (
-                <div
-                    className="fixed inset-0 bg-black/20 z-30 md:hidden"
-                    onClick={() => {
-                        setIsExpanded(false);
-                        setShowMenu(false);
-                    }}
-                />
-            )}
         </>
     );
 }
