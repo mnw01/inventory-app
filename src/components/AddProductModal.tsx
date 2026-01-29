@@ -8,6 +8,7 @@ interface AddProductModalProps {
   onAdd: (product: Omit<Product, 'id'>) => void;
   onUpdate?: (product: Product) => void;
   editingProduct?: Product | null;
+  initialSku?: string;
 }
 
 type ProductFormData = Omit<Product, 'id'>;
@@ -18,6 +19,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   onAdd,
   onUpdate,
   editingProduct,
+  initialSku = '',
 }) => {
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -37,14 +39,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     } else {
       setFormData({
         name: '',
-        sku: '',
+        sku: initialSku || '',
         imageUrl: '',
         stock: 0,
         costPrice: 0,
         customsStatus: 'arrived',
       });
     }
-  }, [isOpen, editingProduct]);
+  }, [isOpen, editingProduct, initialSku]);
 
   if (!isOpen) return null;
 

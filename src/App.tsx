@@ -65,6 +65,7 @@ function App() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'success'>('idle');
   const [currentPage, setCurrentPage] = useState<'inventory' | 'records'>('inventory');
+  const [scannedSku, setScannedSku] = useState('');
 
   // 出入库记录
   const [transactionRecords, setTransactionRecords] = useState<TransactionRecord[]>(() => {
@@ -214,13 +215,11 @@ function App() {
     if (match) {
       handleStockAction(match);
     } else {
-      // If not found, user might want to add it. 
-      // For now just filtering by SKU is enough feedback.
-      // Could also prompt to add:
+      // If not found, prompt to add with pre-filled SKU
       if (confirm(`未找到商品 SKU: ${decodedText}。是否立即添加新商品？`)) {
+        setScannedSku(decodedText);
+        setEditingProduct(null);
         setIsAddModalOpen(true);
-        // You might want to pass the SKU to the modal, but currently modal state is local.
-        // A simple improvement would be to allow pre-filling the modal.
       }
     }
   };
@@ -375,10 +374,12 @@ function App() {
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingProduct(null);
+            setScannedSku('');
           }}
           onAdd={handleAddProduct}
           onUpdate={handleUpdateProduct}
           editingProduct={editingProduct}
+          initialSku={scannedSku}
         />
 
         {isScannerOpen && (
