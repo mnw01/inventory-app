@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X, RefreshCw, AlertCircle, Settings, Camera, Check } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, Settings, Check } from 'lucide-react';
 
 interface ScannerProps {
   onScanSuccess: (decodedText: string) => void;
