@@ -5,3 +5,25 @@
 body {
   background-color: #f3f4f6;
 }
+
+@layer utilities {
+  @keyframes scan {
+    0%, 100% {
+      top: 0%;
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      top: 100%;
+      opacity: 0;
+    }
+  }
+  .animate-scan {
+    animation: scan 2.5s linear infinite;
+  }
+}
