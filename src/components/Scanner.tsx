@@ -54,9 +54,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
         const html5QrCode = scannerRef.current;
 
         const config = {
-          fps: 10,
           // 放大扫码区域
-          qrbox: { width: 320, height: 320 },
+          qrbox: { width: 300, height: 300 },
           aspectRatio: 1.0,
         };
 
@@ -235,18 +234,18 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
               {/* Overlay Guide */}
               {!isLoading && !showSettings && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  {/* Scanner Box */}
-                  <div className="relative w-64 h-64 sm:w-72 sm:h-72 border-2 border-transparent">
+                  {/* Scanner Box - Enlarged */}
+                  <div className="relative w-72 h-72 sm:w-96 sm:h-96 border-2 border-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] rounded-lg">
                     {/* Corners */}
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-lg"></div>
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl-lg"></div>
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br-lg"></div>
+                    <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-blue-500 rounded-tl-lg z-20"></div>
+                    <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-blue-500 rounded-tr-lg z-20"></div>
+                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-blue-500 rounded-bl-lg z-20"></div>
+                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-blue-500 rounded-br-lg z-20"></div>
 
                     {/* Scanning Line */}
-                    <div className="absolute left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-scan"></div>
+                    <div className="absolute left-0 w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-scan z-10 top-0"></div>
 
-                    <p className="absolute -bottom-8 left-0 right-0 text-center text-white text-sm font-medium drop-shadow-md">
+                    <p className="absolute -bottom-10 left-0 right-0 text-center text-white text-sm font-medium drop-shadow-md">
                       将条码放入框内
                     </p>
                   </div>
