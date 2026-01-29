@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import Quagga from '@ericblade/quagga2';
-import { X, RefreshCw, AlertCircle, Settings, Camera } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+// @ts-ignore
+import { Html5Qrcode } from 'html5-qrcode';
+import { X, RefreshCw, AlertCircle, Settings, Check } from 'lucide-react';
 
 interface ScannerProps {
   onScanSuccess: (decodedText: string) => void;
@@ -8,46 +9,23 @@ interface ScannerProps {
 }
 
 export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
-  const scannerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<any>(null);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [cameras, setCameras] = useState<Array<{ id: string, label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [showSettings, setShowSettings] = useState<boolean>(false);
-  const hasScannedRef = useRef(false);
   const onScanSuccessRef = useRef(onScanSuccess);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
   }, [onScanSuccess]);
 
-  // 获取可用摄像头
   useEffect(() => {
-    navigator.mediaDevices.enumerateDevices()
-      .then(devices => {
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        setCameras(videoDevices);
-      })
-      .catch(err => console.warn('Error getting cameras:', err));
-  }, []);
+    mountedRef.current = true;
 
-  const handleDetected = useCallback((result: any) => {
-    if (hasScannedRef.current) return;
-
-    const code = result?.codeResult?.code;
-    if (code) {
-      hasScannedRef.current = true;
-      // 震动反馈（如果支持）
-      if (navigator.vibrate) {
-        navigator.vibrate(100);
-      }
-      Quagga.stop();
-      onScanSuccessRef.current(code);
-    }
-  }, []);
-
-  useEffect(() => {
-    // 检查环境
+    // Check environment
     if (window.location.protocol !== 'https:' &&
       window.location.hostname !== 'localhost' &&
       window.location.hostname !== '127.0.0.1') {
@@ -56,45 +34,78 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
       return;
     }
 
-    hasScannedRef.current = false;
+    const handleScan = (decodedText: string) => {
+      if (mountedRef.current) {
+        // 震动反馈
+        if (navigator.vibrate) {
+          navigator.vibrate(100);
+        }
+        onScanSuccessRef.current(decodedText);
+        // Stop automatically
+        if (scannerRef.current && scannerRef.current.isScanning) {
+          scannerRef.current.stop().then(() => {
+            scannerRef.current?.clear();
+          }).catch(console.error);
+        }
+      }
+    };
 
-    const initScanner = () => {
-      if (!scannerRef.current) return;
+    const initScanner = async () => {
+      try {
+        // Create instance if not exists
+        if (!scannerRef.current) {
+          scannerRef.current = new Html5Qrcode("reader");
+        }
+        const html5QrCode = scannerRef.current;
 
-      const config: any = {
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: scannerRef.current,
-          constraints: {
-            facingMode: selectedCameraId ? undefined : "environment",
-            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 },
-          },
-        },
-        locator: {
-          patchSize: "medium",
-          halfSample: true,
-        },
-        numOfWorkers: navigator.hardwareConcurrency || 4,
-        frequency: 10,
-        decoder: {
-          readers: [
-            "code_128_reader",
-            "ean_reader",
-            "ean_8_reader",
-            "upc_reader",
-            "upc_e_reader",
-            "code_39_reader",
+        const config = {
+          fps: 30,
+          qrbox: { width: 280, height: 180 },
+          aspectRatio: 1.0,
+          formatsToSupport: [
+            0,  // QR_CODE
+            5,  // CODE_128
+            9,  // EAN_13
+            10, // EAN_8
+            14, // UPC_A
+            15, // UPC_E
+            3,  // CODE_39
           ],
-        },
-        locate: true,
-      };
+        };
 
-      Quagga.init(config, (err) => {
-        if (err) {
-          console.error("Quagga init error:", err);
+        try {
+          if (selectedCameraId) {
+            await html5QrCode.start(
+              selectedCameraId,
+              config,
+              (decodedText: string) => handleScan(decodedText),
+              () => { }
+            );
+          } else {
+            await html5QrCode.start(
+              { facingMode: "environment" },
+              config,
+              (decodedText: string) => handleScan(decodedText),
+              () => { }
+            );
+          }
+        } catch (e) {
+          console.warn("Failed to start preferred camera, trying user camera", e);
+          await html5QrCode.start(
+            { facingMode: "user" },
+            config,
+            (decodedText: string) => handleScan(decodedText),
+            () => { }
+          );
+        }
+
+        if (mountedRef.current) {
+          setIsLoading(false);
+        }
+
+      } catch (err: any) {
+        console.error("Scanner initialization failed", err);
+        if (mountedRef.current) {
           let errorMessage = "无法启动摄像头。";
           if (err.name === 'NotAllowedError') {
             errorMessage = "请允许访问摄像头权限。";
@@ -102,38 +113,44 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             errorMessage = "未找到摄像头设备。";
           } else if (err.name === 'NotSupportedError') {
             errorMessage = "当前环境不支持摄像头访问（需HTTPS）。";
+          } else if (typeof err === 'string') {
+            errorMessage = err;
           }
           setError(errorMessage);
           setIsLoading(false);
-          return;
         }
-
-        Quagga.start();
-        setIsLoading(false);
-      });
-
-      Quagga.onDetected(handleDetected);
+      }
     };
 
-    // 小延迟确保 DOM 准备好
-    const timer = setTimeout(initScanner, 100);
+    // Get cameras
+    // @ts-ignore
+    Html5Qrcode.getCameras().then((devices: any[]) => {
+      if (devices && devices.length) {
+        setCameras(devices.map((d: any) => ({ id: d.id, label: d.label || `Camera ${d.id.substring(0, 5)}` })));
+      }
+    }).catch((err: any) => console.warn("Error getting cameras", err));
+
+    const timer = setTimeout(() => {
+      initScanner();
+    }, 100);
 
     return () => {
+      mountedRef.current = false;
       clearTimeout(timer);
-      Quagga.offDetected(handleDetected);
-      Quagga.stop();
+      if (scannerRef.current) {
+        if (scannerRef.current.isScanning) {
+          scannerRef.current.stop().then(() => {
+            scannerRef.current?.clear();
+          }).catch(console.error);
+        } else {
+          scannerRef.current.clear();
+        }
+      }
     };
-  }, [selectedCameraId, handleDetected]);
+  }, [selectedCameraId]);
 
   const handleRetry = () => {
     window.location.reload();
-  };
-
-  const switchCamera = (deviceId: string) => {
-    setSelectedCameraId(deviceId);
-    setShowSettings(false);
-    setIsLoading(true);
-    hasScannedRef.current = false;
   };
 
   return (
@@ -154,9 +171,9 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             </div>
           )}
 
-          {/* 设置面板 */}
+          {/* Settings Overlay */}
           {showSettings && (
-            <div className="absolute inset-0 z-20 bg-black bg-opacity-90 p-4 flex flex-col animate-in fade-in duration-200">
+            <div className="absolute inset-0 z-20 bg-black bg-opacity-80 p-4 flex flex-col animate-in fade-in duration-200">
               <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
                 <h3 className="text-white font-bold flex items-center gap-2">
                   <Settings size={18} /> 摄像头设置
@@ -165,29 +182,36 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
                   <X size={20} />
                 </button>
               </div>
+
               <div className="space-y-2">
-                {cameras.map((cam, index) => (
+                {cameras.map(cam => (
                   <button
-                    key={cam.deviceId}
-                    onClick={() => switchCamera(cam.deviceId)}
-                    className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${selectedCameraId === cam.deviceId
+                    key={cam.id}
+                    onClick={() => {
+                      setSelectedCameraId(cam.id);
+                      setShowSettings(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded flex items-center justify-between ${selectedCameraId === cam.id
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                       }`}
                   >
-                    <Camera size={18} />
-                    <span className="truncate">{cam.label || `摄像头 ${index + 1}`}</span>
+                    <span className="truncate text-sm">{cam.label}</span>
+                    {selectedCameraId === cam.id && <Check size={16} />}
                   </button>
                 ))}
                 <button
-                  onClick={() => switchCamera('')}
-                  className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 ${selectedCameraId === ''
+                  onClick={() => {
+                    setSelectedCameraId('');
+                    setShowSettings(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded flex items-center justify-between ${selectedCameraId === ''
                     ? 'bg-indigo-600 text-white'
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                 >
-                  <Camera size={18} />
-                  <span>自动选择 (默认)</span>
+                  <span className="text-sm">自动选择 (默认)</span>
+                  {selectedCameraId === '' && <Check size={16} />}
                 </button>
               </div>
             </div>
@@ -206,51 +230,27 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
             </div>
           ) : (
             <>
-              {/* 扫描视图 */}
-              <div
-                ref={scannerRef}
-                className="quagga-viewport w-full h-full absolute inset-0"
-              >
-                {/* Quagga 会在这里渲染视频 */}
-              </div>
+              <div id="reader" className="w-full h-full"></div>
 
-              {/* 扫描框覆盖层 */}
+              {/* Controls */}
               {!isLoading && !showSettings && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="relative w-72 h-48 sm:w-96 sm:h-64 border-2 border-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] rounded-lg">
-                    {/* 角标 */}
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-lg"></div>
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-lg"></div>
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-lg"></div>
-
-                    {/* 扫描线 */}
-                    <div className="absolute left-2 right-2 h-0.5 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)] animate-scan"></div>
-
-                    <p className="absolute -bottom-8 left-0 right-0 text-center text-white text-sm font-medium">
-                      将条码放入框内
-                    </p>
-                  </div>
+                <div className="absolute top-4 right-4 z-10">
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all backdrop-blur-sm"
+                    title="设置摄像头"
+                  >
+                    <Settings size={20} />
+                  </button>
                 </div>
               )}
-
-              {/* 设置按钮 */}
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all backdrop-blur-sm"
-                  title="设置摄像头"
-                >
-                  <Settings size={20} />
-                </button>
-              </div>
             </>
           )}
         </div>
 
         <div className="p-4 text-center bg-gray-50 border-t">
           <p className="text-sm text-gray-600">
-            请将条形码对准取景框，系统会自动识别
+            请将条形码或二维码对准取景框
           </p>
         </div>
       </div>
