@@ -68,6 +68,16 @@ body {
   position: relative;
 }
 
+/* 隐藏 html5-qrcode 自带的灰色边框 */
+#reader__scan_region>br,
+#reader__scan_region>img {
+  display: none !important;
+}
+
+#reader__dashboard_section {
+  display: none !important;
+}
+
 #reader__scan_region::after {
   content: '';
   position: absolute;

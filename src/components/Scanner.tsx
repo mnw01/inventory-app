@@ -60,6 +60,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onScanSuccess, onClose }) => {
 
         const config = {
           fps: 30,
+          qrbox: { width: 280, height: 280 },
           aspectRatio: 1.0,
           disableFlip: false,
           formatsToSupport: [
