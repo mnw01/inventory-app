@@ -272,6 +272,7 @@ function App() {
     const { error } = await supabase
       .from('products')
       .insert({
+        id: Date.now().toString(), // Generate ID client-side
         sku: newProductData.sku,
         name: newProductData.name,
         image_url: newProductData.imageUrl,
