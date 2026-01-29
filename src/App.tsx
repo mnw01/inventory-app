@@ -263,7 +263,16 @@ function App() {
     const newStock = type === 'in' ? selectedProduct.stock + quantity : selectedProduct.stock - quantity;
     const finalStock = Math.max(0, newStock);
 
-    // Update Product in DB
+    // 1. Optimistic Update (Immediate UI change)
+    // This prevents flickering and keeps the image stable regardless of network payload
+    setProducts(prev => prev.map(p => {
+      if (p.id === selectedProduct.id) {
+        return { ...p, stock: finalStock };
+      }
+      return p;
+    }));
+
+    // 2. Update Product in DB
     const { error: productError } = await supabase
       .from('products')
       .update({ stock: finalStock })
@@ -272,6 +281,8 @@ function App() {
     if (productError) {
       console.error('Failed to update stock:', productError);
       alert('库存更新失败，请重试');
+      // Rollback on error
+      fetchData(); // Simplest rollback is to refetch
       return;
     }
 
